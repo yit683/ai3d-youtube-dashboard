@@ -13,6 +13,7 @@
 - `index.html`：页面入口
 - `assets/`：样式与交互脚本
 - `data/`：看板数据与自动化配置
+- `data/manual-review.json`：人工筛选与等级覆盖记录
 - `config/sources.json`：自动更新使用的关键词与频道配置
 - `scripts/update_youtube_dashboard.py`：YouTube 定期更新脚本
 - `.github/workflows/update-dashboard.yml`：GitHub Actions 定时任务
