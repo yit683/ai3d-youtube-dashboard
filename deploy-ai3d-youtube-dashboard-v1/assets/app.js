@@ -5,6 +5,7 @@ const state = {
   query: "",
   filters: {
     sFormat: "all",
+    newType: "all",
     currentLane: "all",
     bucket: "all",
     review: "quality",
@@ -84,7 +85,7 @@ function bindChrome() {
 
   $("#resetFilters").addEventListener("click", () => {
     state.query = "";
-    state.filters = { sFormat: "all", currentLane: "all", bucket: "all", review: "quality" };
+    state.filters = { sFormat: "all", newType: "all", currentLane: "all", bucket: "all", review: "quality" };
     $("#searchInput").value = "";
     renderAll();
   });
@@ -103,6 +104,7 @@ function renderAll() {
 
 function renderView() {
   if (state.view === "overview") renderOverviewSearch();
+  if (state.view === "new") renderNewCandidates();
   if (state.view === "tier-s") renderSGrid();
   if (state.view === "current") renderCurrent();
   if (state.view === "map") renderMap();
@@ -270,6 +272,15 @@ function renderFilters() {
   const formats = unique(state.data.videos.filter((v) => v.tier === "S").map((v) => v.format));
   renderPills("#sFilters", [["all", "全部"], ...formats.map((item) => [item, formatLabel(item)])], "sFormat", renderSGrid);
 
+  const newFilters = [
+    ["all", "全部"],
+    ["unreviewed", "待人工判断"],
+    ["highScore", "高分候选"],
+    ["competitor", "竞品相关"],
+    ["workflow", "工作流相关"],
+  ];
+  renderPills("#newFilters", newFilters, "newType", renderNewCandidates);
+
   const currentLanes = [
     ["all", "全部"],
     ["Competitor Intelligence", "竞品动态"],
@@ -306,6 +317,54 @@ function renderSGrid() {
     .sort((a, b) => b.score - a.score);
   $("#sGrid").innerHTML = videos.map(videoCard).join("");
   bindCards("#sGrid", videos);
+}
+
+function renderNewCandidates() {
+  const candidates = getNewCandidates(state.data.videos);
+  const reviewed = candidates.filter((v) => Boolean(v.manualStatus && v.manualStatus !== "unreviewed")).length;
+  const highScore = candidates.filter((v) => Number(v.score || 0) >= 70).length;
+  const competitor = candidates.filter((v) => v.bucket === "Competitor Intelligence").length;
+  const workflow = candidates.filter((v) => /Workflow|Use Case|Printing|Engine/.test(v.bucket || "")).length;
+
+  const matrix = [
+    ["新增候选", candidates.length, "自动更新发现，等待人工筛选"],
+    ["待人工判断", Math.max(candidates.length - reviewed, 0), "尚未写入 manual-review 的候选"],
+    ["高分候选", highScore, "自动评分达到 B 级及以上"],
+    ["竞品/工作流", competitor + workflow, "优先适合人工快速扫一遍"],
+  ];
+
+  $("#newMatrix").innerHTML = matrix.map(([label, count, hint]) => `
+    <div class="review-tile">
+      <p class="eyebrow">${label}</p>
+      <strong>${count}</strong>
+      <p>${hint}</p>
+    </div>
+  `).join("");
+
+  let videos = filteredVideos(candidates);
+  if (state.filters.newType === "unreviewed") {
+    videos = videos.filter((v) => !v.manualStatus || v.manualStatus === "unreviewed");
+  }
+  if (state.filters.newType === "highScore") {
+    videos = videos.filter((v) => Number(v.score || 0) >= 70);
+  }
+  if (state.filters.newType === "competitor") {
+    videos = videos.filter((v) => v.bucket === "Competitor Intelligence");
+  }
+  if (state.filters.newType === "workflow") {
+    videos = videos.filter((v) => /Workflow|Use Case|Printing|Engine/.test(v.bucket || ""));
+  }
+
+  videos = videos
+    .sort((a, b) => {
+      const aDate = new Date(a.addedAt || a.publishedAt || 0).getTime();
+      const bDate = new Date(b.addedAt || b.publishedAt || 0).getTime();
+      return bDate - aDate || Number(b.score || 0) - Number(a.score || 0);
+    })
+    .slice(0, 72);
+
+  $("#newGrid").innerHTML = videos.map(videoCard).join("");
+  bindCards("#newGrid", videos);
 }
 
 function renderCurrent() {
@@ -419,6 +478,16 @@ function filteredVideos(videos) {
   ].some((value) => normalized(value).includes(q)));
 }
 
+function getNewCandidates(videos) {
+  return videos.filter((video) => {
+    if (video.addedByAutomation) return true;
+    if (video.screening === "Auto-Review") return true;
+    if (video.sourceRounds === "scheduled") return true;
+    if (video.priorityReason === "自动新增候选，待人工复核") return true;
+    return false;
+  });
+}
+
 function videoCard(video) {
   const tier = video.tier || "B";
   return `
@@ -439,11 +508,17 @@ function videoCard(video) {
           <span class="mini-tag">${escapeHtml(video.bucket)}</span>
           <span class="mini-tag">${formatLabel(video.format)}</span>
           <span class="mini-tag">优先级 ${escapeHtml(video.priority || "Low")}</span>
+          ${isNewCandidate(video) ? `<span class="mini-tag new-candidate-tag">新增候选</span>` : ""}
+          ${video.manualStatus ? `<span class="mini-tag">人工 ${escapeHtml(manualStatusLabel(video.manualStatus))}</span>` : ""}
         </div>
         ${scoreBars(video)}
       </div>
     </article>
   `;
+}
+
+function isNewCandidate(video) {
+  return getNewCandidates([video]).length > 0;
 }
 
 function scoreBars(video) {
@@ -509,6 +584,18 @@ function openDrawer(video) {
       <p>${escapeHtml(video.priorityReason || video.action || "No current intelligence reason provided.")}</p>
     </div>
 
+    ${isNewCandidate(video) ? `
+      <div class="drawer-section">
+        <p class="eyebrow">新增候选状态</p>
+        <div class="tag-line">
+          <span class="mini-tag">来源: 自动更新</span>
+          <span class="mini-tag">加入时间: ${escapeHtml(shortDate(video.addedAt))}</span>
+          <span class="mini-tag">人工状态: ${escapeHtml(manualStatusLabel(video.manualStatus || "unreviewed"))}</span>
+        </div>
+        <p style="margin-top:12px">${escapeHtml(video.manualNote || "尚未写入人工判断，可在 data/manual-review.json 中补充。")}</p>
+      </div>
+    ` : ""}
+
     <div class="drawer-section">
       <p class="eyebrow">可信简介</p>
       <p>${escapeHtml(video.description || "No natural description available.")}</p>
@@ -557,6 +644,16 @@ function qualityStatusLabel(value) {
     pass: "正常通过",
     limit_to_B: "限制到 B",
     hard_exclude: "建议归档",
+  };
+  return labels[value] || value || "-";
+}
+
+function manualStatusLabel(value) {
+  const labels = {
+    approved: "通过",
+    rejected: "不保留",
+    needs_review: "待复核",
+    unreviewed: "未判断",
   };
   return labels[value] || value || "-";
 }
