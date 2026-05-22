@@ -22,6 +22,7 @@
 
         <nav class="nav" aria-label="Dashboard sections">
           <button class="nav-item active" data-view="overview">概览</button>
+          <button class="nav-item" data-view="new">新增候选</button>
           <button class="nav-item" data-view="tier-s">S 级样本</button>
           <button class="nav-item" data-view="current">近期优先资源</button>
           <button class="nav-item" data-view="map">主题分类</button>
@@ -127,6 +128,18 @@
             <div class="filter-row" id="sFilters"></div>
           </div>
           <div class="card-grid spotlight-grid" id="sGrid"></div>
+        </section>
+
+        <section class="view" id="new">
+          <div class="section-intro">
+            <div>
+              <p class="eyebrow">New candidates</p>
+              <h3>自动更新新增候选</h3>
+            </div>
+            <div class="filter-row" id="newFilters"></div>
+          </div>
+          <div class="review-matrix" id="newMatrix"></div>
+          <div class="card-grid compact-grid" id="newGrid"></div>
         </section>
 
         <section class="view" id="current">
