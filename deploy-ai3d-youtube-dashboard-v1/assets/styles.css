@@ -721,6 +721,12 @@ h3 {
   padding: 5px 7px;
 }
 
+.new-candidate-tag {
+  background: rgba(255, 214, 74, 0.16);
+  border-color: rgba(255, 214, 74, 0.4);
+  color: var(--text);
+}
+
 .score-bars {
   display: grid;
   gap: 7px;
