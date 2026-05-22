@@ -1,8 +1,8 @@
 window.DASHBOARD_AUTOMATION = {
   mode: "static_mvp",
-  statusLabel: "GitHub 自动更新预留",
-  lastSourceUpdate: "2026-05-20",
-  plannedCadence: "默认每周一更新，可手动触发",
+  statusLabel: "GitHub 自动更新",
+  lastSourceUpdate: "2026-05-22",
+  plannedCadence: "GitHub Actions 每周自动更新",
   owner: "Strategy / Research",
   dataContractVersion: "dashboard-data.v1",
   sourceWorkbook: "GitHub repository / YouTube Data API",
