@@ -188,6 +188,12 @@ def infer_candidate_record(video: dict) -> dict:
 
     return {
         "id": video_id,
+        "addedByAutomation": True,
+        "addedAt": dt.datetime.now(dt.timezone.utc).date().isoformat(),
+        "manualStatus": "unreviewed",
+        "manualReviewer": "",
+        "manualReviewedAt": "",
+        "manualNote": "",
         "score": score,
         "tier": tier,
         "bucket": bucket,
