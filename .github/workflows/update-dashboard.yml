@@ -1,0 +1,51 @@
+name: Update YouTube Research Dashboard
+
+on:
+  workflow_dispatch:
+    inputs:
+      lookback_days:
+        description: "How many days of recent YouTube videos to scan"
+        required: false
+        default: "14"
+  schedule:
+    - cron: "15 2 * * 1"
+
+permissions:
+  contents: write
+
+jobs:
+  update-dashboard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    defaults:
+      run:
+        working-directory: deploy-ai3d-youtube-dashboard-v1
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Update dashboard data
+        env:
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+        run: |
+          LOOKBACK_DAYS="${{ github.event.inputs.lookback_days || '14' }}"
+          python scripts/update_youtube_dashboard.py --lookback-days "$LOOKBACK_DAYS"
+
+      - name: Commit updated data
+        run: |
+          if git diff --quiet; then
+            echo "No dashboard changes to commit."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/dashboard-data.js data/automation-config.js data/manual-review.json
+          git commit -m "Update YouTube dashboard data"
+          git push
