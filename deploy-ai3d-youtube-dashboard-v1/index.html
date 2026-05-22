@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>AI 3D YouTube Research Database</title>
+    <link rel="stylesheet" href="./assets/styles.css" />
+  </head>
+  <body>
+    <canvas id="signalCanvas" aria-hidden="true"></canvas>
+
+    <div class="shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-mark">AI3D</div>
+          <div>
+            <p class="eyebrow">Research Database</p>
+            <h1>AI 3D YouTube 资源库</h1>
+          </div>
+        </div>
+
+        <nav class="nav" aria-label="Dashboard sections">
+          <button class="nav-item active" data-view="overview">概览</button>
+          <button class="nav-item" data-view="tier-s">S 级样本</button>
+          <button class="nav-item" data-view="current">近期优先资源</button>
+          <button class="nav-item" data-view="map">主题分类</button>
+          <button class="nav-item" data-view="review">复核队列</button>
+        </nav>
+
+        <div class="signal-panel">
+          <span class="pulse"></span>
+          <div>
+            <strong>数据版本 v1.3</strong>
+            <p>本地静态数据 · 预留自动化接入</p>
+          </div>
+        </div>
+      </aside>
+
+      <main class="main">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">629 videos · scoring standard v1.3</p>
+            <h2 id="viewTitle">概览</h2>
+          </div>
+          <div class="search-wrap">
+            <input id="searchInput" type="search" placeholder="搜索标题、频道、关键词..." />
+            <button id="resetFilters" title="重置筛选">重置</button>
+          </div>
+        </header>
+
+        <section class="view active" id="overview">
+          <div class="kpi-grid" id="kpiGrid"></div>
+
+          <div class="dashboard-grid">
+            <article class="panel panel-wide">
+              <div class="panel-head">
+                <div>
+                  <p class="eyebrow">Resource distribution</p>
+                  <h3>资源分层</h3>
+                </div>
+                <span class="chip">v1.3 评分结果</span>
+              </div>
+              <div class="tier-stage" id="tierStage"></div>
+            </article>
+
+            <article class="panel">
+              <div class="panel-head">
+                <div>
+                  <p class="eyebrow">Version comparison</p>
+                  <h3>版本结果对比</h3>
+                </div>
+              </div>
+              <div class="delta-stack" id="deltaStack"></div>
+            </article>
+
+            <article class="panel">
+              <div class="panel-head">
+                <div>
+                  <p class="eyebrow">Quality review</p>
+                  <h3>内容质量复核</h3>
+                </div>
+              </div>
+              <div class="risk-grid" id="riskGrid"></div>
+            </article>
+
+            <article class="panel panel-wide">
+              <div class="panel-head">
+                <div>
+                  <p class="eyebrow">Source channels</p>
+                  <h3>S/A 资源来源</h3>
+                </div>
+              </div>
+              <div class="channel-board" id="channelBoard"></div>
+            </article>
+
+            <article class="panel panel-wide">
+              <div class="panel-head">
+                <div>
+                  <p class="eyebrow">Data pipeline</p>
+                  <h3>数据接入与更新</h3>
+                </div>
+                <span class="chip" id="pipelineMode">Static</span>
+              </div>
+              <div class="pipeline-board" id="pipelineBoard"></div>
+            </article>
+
+            <article class="panel search-results-panel" id="overviewSearchPanel">
+              <div class="panel-head">
+                <div>
+                  <p class="eyebrow">Search results</p>
+                  <h3>检索结果</h3>
+                </div>
+                <span class="chip" id="overviewSearchCount">0</span>
+              </div>
+              <div class="card-grid compact-grid" id="overviewSearchGrid"></div>
+            </article>
+          </div>
+        </section>
+
+        <section class="view" id="tier-s">
+          <div class="section-intro">
+            <div>
+              <p class="eyebrow">Validated S-tier samples</p>
+              <h3>S 级人工走查样本</h3>
+            </div>
+            <div class="filter-row" id="sFilters"></div>
+          </div>
+          <div class="card-grid spotlight-grid" id="sGrid"></div>
+        </section>
+
+        <section class="view" id="current">
+          <div class="section-intro">
+            <div>
+              <p class="eyebrow">Priority resources</p>
+              <h3>近期优先资源</h3>
+            </div>
+            <div class="filter-row" id="currentFilters"></div>
+          </div>
+          <div class="radar-layout">
+            <div class="intel-lanes" id="intelLanes"></div>
+            <div class="card-grid compact-grid" id="currentGrid"></div>
+          </div>
+        </section>
+
+        <section class="view" id="map">
+          <div class="section-intro">
+            <div>
+              <p class="eyebrow">Topic taxonomy</p>
+              <h3>主题分类</h3>
+            </div>
+            <span class="chip">点击分类筛选视频</span>
+          </div>
+          <div class="map-layout">
+            <div class="knowledge-map" id="knowledgeMap"></div>
+            <div class="card-grid compact-grid" id="mapGrid"></div>
+          </div>
+        </section>
+
+        <section class="view" id="review">
+          <div class="section-intro">
+            <div>
+              <p class="eyebrow">Review queue</p>
+              <h3>内容质量与元数据复核</h3>
+            </div>
+            <div class="filter-row" id="reviewFilters"></div>
+          </div>
+          <div class="review-matrix" id="reviewMatrix"></div>
+          <div class="card-grid compact-grid" id="reviewGrid"></div>
+        </section>
+      </main>
+    </div>
+
+    <aside class="drawer" id="detailDrawer" aria-hidden="true">
+      <button class="drawer-close" id="drawerClose" title="关闭">×</button>
+      <div id="drawerContent"></div>
+    </aside>
+
+    <script src="./data/dashboard-data.js"></script>
+    <script src="./data/automation-config.js"></script>
+    <script src="./assets/app.js"></script>
+  </body>
+</html>
