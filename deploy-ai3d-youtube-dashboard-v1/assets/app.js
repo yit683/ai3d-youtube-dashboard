@@ -1,6 +1,7 @@
 const state = {
   data: null,
   automation: null,
+  reviewDecisions: {},
   view: "overview",
   query: "",
   filters: {
@@ -31,6 +32,29 @@ const bucketColors = [
   "#a88b38",
   "#755f2a",
 ];
+
+const reviewLaneConfig = {
+  high_priority: {
+    label: "优先确认",
+    hint: "本周优先看这一组",
+    action: "优先人工确认",
+  },
+  needs_review: {
+    label: "待判断",
+    hint: "快速判断是否收录",
+    action: "人工快速判断",
+  },
+  low_priority: {
+    label: "低优先观察",
+    hint: "暂存候选池",
+    action: "低优先观察",
+  },
+  archive_candidate: {
+    label: "建议归档",
+    hint: "可批量跳过",
+    action: "建议归档",
+  },
+};
 
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => [...document.querySelectorAll(selector)];
@@ -69,6 +93,7 @@ const percent = (part, total) => `${Math.round((part / Math.max(total, 1)) * 100
 const normalized = (text) => String(text || "").toLowerCase();
 
 const tierColor = (tier) => palette[tier] || "#ffd64a";
+const REVIEW_STORAGE_KEY = "ai3d-youtube-review-decisions-v1";
 
 async function init() {
   if (window.DASHBOARD_DATA) {
@@ -78,6 +103,7 @@ async function init() {
     state.data = await response.json();
   }
   state.automation = window.DASHBOARD_AUTOMATION || defaultAutomationConfig();
+  state.reviewDecisions = loadReviewDecisions();
   bindChrome();
   renderAll();
   initSignalCanvas();
@@ -106,6 +132,12 @@ function bindChrome() {
     renderAll();
   });
 
+  $("#exportReviewDecisions")?.addEventListener("click", exportReviewDecisions);
+  $("#clearReviewDecisions")?.addEventListener("click", () => {
+    state.reviewDecisions = {};
+    persistReviewDecisions();
+    renderView();
+  });
   $("#drawerClose").addEventListener("click", closeDrawer);
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape") closeDrawer();
@@ -322,8 +354,11 @@ function renderFilters() {
 
   const newFilters = [
     ["all", "全部"],
-    ["unreviewed", "待人工判断"],
-    ["highScore", "高分候选"],
+    ["high_priority", "优先确认"],
+    ["needs_review", "待判断"],
+    ["draft_needs_review", "本轮待复核"],
+    ["low_priority", "低优先观察"],
+    ["archive_candidate", "建议归档"],
     ["competitor", "竞品相关"],
     ["workflow", "工作流相关"],
   ];
@@ -369,32 +404,65 @@ function renderSGrid() {
 
 function renderNewCandidates() {
   const candidates = getNewCandidates(state.data.videos);
-  const reviewed = candidates.filter((v) => Boolean(v.manualStatus && v.manualStatus !== "unreviewed")).length;
-  const highScore = candidates.filter((v) => Number(v.score || 0) >= 70).length;
+  const laneCounts = candidates.reduce((acc, video) => {
+    const lane = getReviewLane(video);
+    acc[lane] = (acc[lane] || 0) + 1;
+    return acc;
+  }, {});
   const competitor = candidates.filter((v) => v.bucket === "Competitor Intelligence").length;
   const workflow = candidates.filter((v) => /Workflow|Use Case|Printing|Engine/.test(v.bucket || "")).length;
 
   const matrix = [
-    ["新增候选", candidates.length, "自动更新发现，等待人工筛选"],
-    ["待人工判断", Math.max(candidates.length - reviewed, 0), "尚未写入 manual-review 的候选"],
-    ["高分候选", highScore, "自动评分达到 B 级及以上"],
-    ["竞品/工作流", competitor + workflow, "优先适合人工快速扫一遍"],
+    ["high_priority", laneCounts.high_priority || 0],
+    ["needs_review", laneCounts.needs_review || 0],
+    ["low_priority", laneCounts.low_priority || 0],
+    ["archive_candidate", laneCounts.archive_candidate || 0],
   ];
 
-  $("#newMatrix").innerHTML = matrix.map(([label, count, hint]) => `
-    <div class="review-tile">
-      <p class="eyebrow">${label}</p>
+  $("#newMatrix").innerHTML = matrix.map(([lane, count]) => {
+    const config = reviewLaneConfig[lane];
+    return `
+    <button class="review-tile review-lane-tile ${state.filters.newType === lane ? "active" : ""}" data-lane="${lane}">
+      <p class="eyebrow">${config.action}</p>
       <strong>${count}</strong>
-      <p>${hint}</p>
+      <p>${config.hint}</p>
+    </button>
+  `;
+  }).join("");
+
+  $("#newMatrix").querySelectorAll(".review-lane-tile").forEach((tile) => {
+    tile.addEventListener("click", () => {
+      state.filters.newType = state.filters.newType === tile.dataset.lane ? "all" : tile.dataset.lane;
+      renderNewCandidates();
+      renderFilters();
+    });
+  });
+
+  $("#newWorkload").innerHTML = `
+    <div>
+      <p class="eyebrow">本周建议处理</p>
+      <strong>${fmt((laneCounts.high_priority || 0) + (laneCounts.needs_review || 0))}</strong>
+      <span>优先确认 + 待判断</span>
     </div>
-  `).join("");
+    <div>
+      <p class="eyebrow">可延后处理</p>
+      <strong>${fmt((laneCounts.low_priority || 0) + (laneCounts.archive_candidate || 0))}</strong>
+      <span>低优先观察 + 建议归档</span>
+    </div>
+    <div>
+      <p class="eyebrow">主题强信号</p>
+      <strong>${fmt(competitor + workflow)}</strong>
+      <span>竞品或工作流相关</span>
+    </div>
+  `;
+  renderReviewDraft();
 
   let videos = filteredVideos(candidates);
-  if (state.filters.newType === "unreviewed") {
-    videos = videos.filter((v) => !v.manualStatus || v.manualStatus === "unreviewed");
+  if (reviewLaneConfig[state.filters.newType]) {
+    videos = videos.filter((v) => getReviewLane(v) === state.filters.newType);
   }
-  if (state.filters.newType === "highScore") {
-    videos = videos.filter((v) => Number(v.score || 0) >= 70);
+  if (state.filters.newType === "draft_needs_review") {
+    videos = videos.filter((v) => state.reviewDecisions[v.id]?.manualStatus === "needs_review");
   }
   if (state.filters.newType === "competitor") {
     videos = videos.filter((v) => v.bucket === "Competitor Intelligence");
@@ -405,14 +473,17 @@ function renderNewCandidates() {
 
   videos = videos
     .sort((a, b) => {
+      const laneOrder = { high_priority: 0, needs_review: 1, low_priority: 2, archive_candidate: 3 };
+      const laneDiff = laneOrder[getReviewLane(a)] - laneOrder[getReviewLane(b)];
       const aDate = new Date(a.addedAt || a.publishedAt || 0).getTime();
       const bDate = new Date(b.addedAt || b.publishedAt || 0).getTime();
-      return bDate - aDate || Number(b.score || 0) - Number(a.score || 0);
+      return laneDiff || bDate - aDate || Number(b.score || 0) - Number(a.score || 0);
     })
     .slice(0, 72);
 
-  $("#newGrid").innerHTML = videos.map(videoCard).join("");
+  $("#newGrid").innerHTML = videos.map((video) => videoCard(video, { showReviewSuggestion: true })).join("");
   bindCards("#newGrid", videos);
+  bindReviewActions("#newGrid", videos);
 }
 
 function renderCurrent() {
@@ -536,8 +607,62 @@ function getNewCandidates(videos) {
   });
 }
 
-function videoCard(video) {
+function getReviewLane(video) {
+  if (video.reviewLane && reviewLaneConfig[video.reviewLane]) return video.reviewLane;
+  const score = Number(video.score || 0);
+  const bucket = String(video.bucket || "");
+  const format = String(video.format || "");
+  const duration = Number(video.duration || 0);
+  const strongTopic = bucket === "Competitor Intelligence" || /Workflow|Use Case|Printing|Engine/.test(bucket) || /review|comparison/.test(format);
+  if (duration > 0 && duration < 2.5 && !strongTopic) return "archive_candidate";
+  if (score >= 70 && strongTopic) return "high_priority";
+  if (strongTopic || score >= 58) return "needs_review";
+  return "low_priority";
+}
+
+function getReviewSuggestion(video) {
+  const lane = getReviewLane(video);
+  const action = video.suggestedAction || reviewLaneConfig[lane]?.action || "人工快速判断";
+  const bucket = video.suggestedBucket || suggestedBucketLabel(video);
+  const tier = video.suggestedTier || (lane === "archive_candidate" ? "Archive" : video.tier || "C");
+  const reason = video.suggestedReason || fallbackSuggestionReason(lane);
+  const confidence = video.reviewConfidence || (lane === "high_priority" ? "high" : lane === "low_priority" ? "low" : "medium");
+  return { lane, action, bucket, tier, reason, confidence };
+}
+
+function suggestedBucketLabel(video) {
+  if (video.bucket === "Competitor Intelligence") return "竞品相关";
+  if (/Workflow|Use Case|Printing|Engine/.test(video.bucket || "")) return "工作流相关";
+  return "AI 3D 基础知识";
+}
+
+function fallbackSuggestionReason(lane) {
+  const reasons = {
+    high_priority: "分数较高且命中明确主题信号，建议优先人工确认。",
+    needs_review: "存在可用信号，但需要人工判断是否正式收录。",
+    low_priority: "相关性较弱，建议保留观察，不占用本周审核时间。",
+    archive_candidate: "信号较弱或信息量较低，可优先归档。",
+  };
+  return reasons[lane] || "需要人工快速判断。";
+}
+
+function reviewLaneLabel(value) {
+  return reviewLaneConfig[value]?.label || value || "-";
+}
+
+function confidenceLabel(value) {
+  const labels = {
+    high: "高",
+    medium: "中",
+    low: "低",
+  };
+  return labels[value] || value || "-";
+}
+
+function videoCard(video, options = {}) {
   const tier = video.tier || "B";
+  const suggestion = getReviewSuggestion(video);
+  const decision = state.reviewDecisions[video.id];
   return `
     <article class="video-card" data-id="${video.id}">
       <div class="thumb">
@@ -558,7 +683,19 @@ function videoCard(video) {
           <span class="mini-tag">优先级 ${escapeHtml(video.priority || "Low")}</span>
           ${isNewCandidate(video) ? `<span class="mini-tag new-candidate-tag">新增候选</span>` : ""}
           ${video.manualStatus ? `<span class="mini-tag">人工 ${escapeHtml(manualStatusLabel(video.manualStatus))}</span>` : ""}
+          ${decision ? `<span class="mini-tag decision-tag">本轮 ${escapeHtml(manualStatusLabel(decision.manualStatus))}</span>` : ""}
         </div>
+        ${options.showReviewSuggestion ? `
+          <div class="suggestion-line">
+            <b>${escapeHtml(suggestion.action)}</b>
+            <span>${escapeHtml(suggestion.bucket)} · ${escapeHtml(reviewLaneLabel(suggestion.lane))}</span>
+          </div>
+          <div class="quick-actions">
+            <button type="button" data-review-action="approve" data-id="${video.id}">收录</button>
+            <button type="button" data-review-action="reject" data-id="${video.id}">归档</button>
+            <button type="button" data-review-action="needs_review" data-id="${video.id}">待复核</button>
+          </div>
+        ` : ""}
         ${scoreBars(video)}
       </div>
     </article>
@@ -595,8 +732,23 @@ function bindCards(container, videos) {
   });
 }
 
+function bindReviewActions(container, videos) {
+  const byId = new Map(videos.map((video) => [video.id, video]));
+  $(container).querySelectorAll("[data-review-action]").forEach((button) => {
+    button.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const video = byId.get(button.dataset.id);
+      if (!video) return;
+      saveReviewDecision(video, button.dataset.reviewAction);
+      renderNewCandidates();
+    });
+  });
+}
+
 function openDrawer(video) {
   if (!video) return;
+  const suggestion = getReviewSuggestion(video);
   $("#drawerContent").innerHTML = `
     <div class="drawer-hero"><img src="${video.thumbnail}" alt="" /></div>
     <p class="eyebrow">${escapeHtml(video.tier)} Tier · ${Number(video.score).toFixed(1)} score</p>
@@ -634,13 +786,30 @@ function openDrawer(video) {
 
     ${isNewCandidate(video) ? `
       <div class="drawer-section">
-        <p class="eyebrow">新增候选状态</p>
+        <p class="eyebrow">机器审核建议</p>
+        <div class="tag-line">
+          <span class="mini-tag">${escapeHtml(suggestion.action)}</span>
+          <span class="mini-tag">建议归类: ${escapeHtml(suggestion.bucket)}</span>
+          <span class="mini-tag">建议层级: ${escapeHtml(suggestion.tier)}</span>
+          <span class="mini-tag">置信度: ${escapeHtml(confidenceLabel(suggestion.confidence))}</span>
+        </div>
+        <p style="margin-top:12px">${escapeHtml(suggestion.reason)}</p>
+        <div class="drawer-actions">
+          <button type="button" data-review-action="approve" data-id="${video.id}">收录</button>
+          <button type="button" data-review-action="reject" data-id="${video.id}">归档</button>
+          <button type="button" data-review-action="needs_review" data-id="${video.id}">待复核</button>
+        </div>
+      </div>
+
+      <div class="drawer-section">
+        <p class="eyebrow">人工处理记录</p>
         <div class="tag-line">
           <span class="mini-tag">来源: 自动更新</span>
           <span class="mini-tag">加入时间: ${escapeHtml(shortDate(video.addedAt))}</span>
           <span class="mini-tag">人工状态: ${escapeHtml(manualStatusLabel(video.manualStatus || "unreviewed"))}</span>
         </div>
-        <p style="margin-top:12px">${escapeHtml(video.manualNote || "尚未写入人工判断，可在 data/manual-review.json 中补充。")}</p>
+        <p style="margin-top:12px">${escapeHtml(video.manualNote || "如需正式收录或归档，可把下面这段记录写入 data/manual-review.json。")}</p>
+        <pre class="review-snippet">${escapeHtml(manualReviewSnippet(video, suggestion))}</pre>
       </div>
     ` : ""}
 
@@ -664,8 +833,127 @@ function openDrawer(video) {
       <p style="margin-top:12px">${escapeHtml(displayReason(video.qualityReason || video.spamReason || "暂无需要特别说明的问题。"))}</p>
     </div>
   `;
+  bindReviewActions("#drawerContent", [video]);
   $("#detailDrawer").classList.add("open");
   $("#detailDrawer").setAttribute("aria-hidden", "false");
+}
+
+function manualReviewSnippet(video, suggestion) {
+  return `"${video.id}": ${JSON.stringify(buildReviewRecord(video, suggestion.lane === "archive_candidate" ? "reject" : "approve"), null, 2)}`;
+}
+
+function buildReviewRecord(video, action) {
+  const suggestion = getReviewSuggestion(video);
+  const today = new Date().toISOString().slice(0, 10);
+  const statusMap = {
+    approve: "approved",
+    reject: "rejected",
+    needs_review: "needs_review",
+  };
+  const tierMap = {
+    approve: suggestion.tier === "Archive" ? video.tier || "C" : suggestion.tier,
+    reject: "Archive",
+    needs_review: suggestion.tier === "Archive" ? video.tier || "C" : suggestion.tier,
+  };
+  const priorityMap = {
+    approve: suggestion.lane === "high_priority" ? "High" : "Medium",
+    reject: "Low",
+    needs_review: "Medium",
+  };
+  const noteMap = {
+    approve: `收录：${suggestion.reason}`,
+    reject: `归档：${suggestion.reason}`,
+    needs_review: `待复核：${suggestion.reason}`,
+  };
+  return {
+    manualStatus: statusMap[action] || "needs_review",
+    tierOverride: tierMap[action] || video.tier || "C",
+    priorityOverride: priorityMap[action] || "Medium",
+    roleOverride: video.role || "",
+    reviewer: "",
+    reviewedAt: today,
+    note: noteMap[action] || suggestion.reason,
+  };
+}
+
+function saveReviewDecision(video, action) {
+  state.reviewDecisions[video.id] = buildReviewRecord(video, action);
+  persistReviewDecisions();
+  renderReviewDraft();
+}
+
+function loadReviewDecisions() {
+  try {
+    return JSON.parse(localStorage.getItem(REVIEW_STORAGE_KEY) || "{}");
+  } catch {
+    return {};
+  }
+}
+
+function persistReviewDecisions() {
+  try {
+    localStorage.setItem(REVIEW_STORAGE_KEY, JSON.stringify(state.reviewDecisions));
+  } catch {
+    // If browser storage is unavailable, keep the draft in memory for this session.
+  }
+}
+
+function renderReviewDraft() {
+  const draft = $("#reviewDraft");
+  const count = $("#reviewDraftCount");
+  const focusList = $("#reviewFocusList");
+  if (!draft || !count) return;
+  const entries = Object.entries(state.reviewDecisions);
+  count.textContent = `${entries.length} 条`;
+  draft.textContent = entries.length ? JSON.stringify(state.reviewDecisions, null, 2) : "尚未标记候选。";
+  if (!focusList) return;
+
+  const videoById = new Map((state.data?.videos || []).map((video) => [video.id, video]));
+  const needsReview = entries
+    .filter(([, record]) => record.manualStatus === "needs_review")
+    .map(([id, record]) => ({ id, record, video: videoById.get(id) }))
+    .filter((item) => item.video);
+
+  if (!needsReview.length) {
+    focusList.innerHTML = `
+      <div class="review-empty">
+        <p class="eyebrow">本轮待复核</p>
+        <strong>0</strong>
+        <span>只有你点击“待复核”的条目会进入这里。</span>
+      </div>
+    `;
+    return;
+  }
+
+  focusList.innerHTML = `
+    <div class="review-focus-head">
+      <div>
+        <p class="eyebrow">本轮待复核</p>
+        <h3>${needsReview.length} 条需要二次判断</h3>
+      </div>
+      <span>建议集中处理，不需要逐条重看全部新增候选。</span>
+    </div>
+    ${needsReview.map(({ video, record }) => `
+      <article class="review-focus-item">
+        <div>
+          <strong>${escapeHtml(video.title)}</strong>
+          <p>${escapeHtml(video.channel)} · ${shortDate(video.publishedAt)} · ${fmt(video.views)} views</p>
+          <span>${escapeHtml(record.note || getReviewSuggestion(video).reason)}</span>
+        </div>
+        <a href="${video.url}" target="_blank" rel="noreferrer">打开</a>
+      </article>
+    `).join("")}
+  `;
+}
+
+function exportReviewDecisions() {
+  const text = JSON.stringify(state.reviewDecisions, null, 2);
+  const blob = new Blob([`${text}\n`], { type: "application/json" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = `manual-review-draft-${new Date().toISOString().slice(0, 10)}.json`;
+  link.click();
+  URL.revokeObjectURL(link.href);
 }
 
 function closeDrawer() {
@@ -810,4 +1098,3 @@ function initSignalCanvas() {
 init().catch((error) => {
   document.body.innerHTML = `<pre style="padding:24px;color:white">${error.stack || error}</pre>`;
 });
-

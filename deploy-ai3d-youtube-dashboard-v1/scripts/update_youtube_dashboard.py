@@ -205,11 +205,21 @@ def infer_candidate_record(video: dict) -> dict:
     else:
         content_format = "general"
 
+    duration = parse_duration_minutes(content.get("duration"))
     relevance = min(40, 22 + competitor_hits * 4 + workflow_hits * 2)
     strategic = min(30, 16 + competitor_hits * 3 + workflow_hits * 2 + review_hits * 2)
     market = 8
     score = round(relevance + strategic + market, 1)
     tier = "B" if score >= 70 else "C"
+    suggestion = infer_review_suggestion(
+        bucket=bucket,
+        tier=tier,
+        score=score,
+        competitor_hits=competitor_hits,
+        workflow_hits=workflow_hits,
+        review_hits=review_hits,
+        duration=duration,
+    )
 
     return {
         "id": video_id,
@@ -225,6 +235,12 @@ def infer_candidate_record(video: dict) -> dict:
         "role": "Workflow Case" if bucket != "Competitor Intelligence" else "Competitor Reference",
         "priority": "Medium" if tier == "B" else "Low",
         "priorityReason": "自动新增候选，待人工复核",
+        "reviewLane": suggestion["reviewLane"],
+        "suggestedAction": suggestion["suggestedAction"],
+        "suggestedBucket": suggestion["suggestedBucket"],
+        "suggestedTier": suggestion["suggestedTier"],
+        "suggestedReason": suggestion["suggestedReason"],
+        "reviewConfidence": suggestion["reviewConfidence"],
         "action": "Review newly discovered resource",
         "validatedUse": validated_use,
         "qualityGate": "pass",
@@ -258,7 +274,7 @@ def infer_candidate_record(video: dict) -> dict:
         "publishedAt": snippet.get("publishedAt", ""),
         "views": int(stats.get("viewCount", 0) or 0),
         "comments": int(stats.get("commentCount", 0) or 0),
-        "duration": parse_duration_minutes(content.get("duration")),
+        "duration": duration,
         "description": description[:420] + ("..." if len(description) > 420 else ""),
         "keywordHits": "",
         "thumbnail": f"https://img.youtube.com/vi/{video_id}/hqdefault.jpg",
@@ -270,6 +286,61 @@ def infer_candidate_record(video: dict) -> dict:
             "adjacentAI": 1 if "ai" in blob else 0,
             "noise": 0,
         },
+    }
+
+
+def infer_review_suggestion(
+    *,
+    bucket: str,
+    tier: str,
+    score: float,
+    competitor_hits: int,
+    workflow_hits: int,
+    review_hits: int,
+    duration: float | None,
+) -> dict:
+    strong_topic_signal = competitor_hits > 0 or workflow_hits >= 2 or review_hits > 0
+    weak_or_short = duration is not None and duration < 2.5 and not strong_topic_signal
+
+    if weak_or_short:
+        review_lane = "archive_candidate"
+        suggested_action = "建议归档"
+        suggested_tier = "Archive"
+        confidence = "medium"
+        reason = "时长较短且没有明显竞品、工作流或评测信号，可先不进入主库。"
+    elif score >= 70 and strong_topic_signal:
+        review_lane = "high_priority"
+        suggested_action = "优先人工确认"
+        suggested_tier = tier
+        confidence = "high"
+        reason = "分数达到 B 级及以上，并命中竞品、工作流或评测信号。"
+    elif strong_topic_signal or score >= 58:
+        review_lane = "needs_review"
+        suggested_action = "人工快速判断"
+        suggested_tier = tier
+        confidence = "medium"
+        reason = "存在可用信号，但需要人工判断是否值得正式收录。"
+    else:
+        review_lane = "low_priority"
+        suggested_action = "低优先观察"
+        suggested_tier = "C"
+        confidence = "low"
+        reason = "相关性较弱，建议保留在候选池，暂不占用本周审核时间。"
+
+    if bucket == "Competitor Intelligence":
+        suggested_bucket = "竞品相关"
+    elif "Workflow" in bucket or "Use Case" in bucket:
+        suggested_bucket = "工作流相关"
+    else:
+        suggested_bucket = "AI 3D 基础知识"
+
+    return {
+        "reviewLane": review_lane,
+        "suggestedAction": suggested_action,
+        "suggestedBucket": suggested_bucket,
+        "suggestedTier": suggested_tier,
+        "suggestedReason": reason,
+        "reviewConfidence": confidence,
     }
 
 
