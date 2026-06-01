@@ -140,6 +140,21 @@
             <div class="filter-row" id="newFilters"></div>
           </div>
           <div class="review-matrix" id="newMatrix"></div>
+          <div class="workload-strip" id="newWorkload"></div>
+          <div class="review-export">
+            <div>
+              <p class="eyebrow">Manual review draft</p>
+              <h3>本轮人工标记</h3>
+              <p>点击候选卡片上的按钮后，这里会生成待复核清单和可合并到 manual-review.json 的记录。</p>
+            </div>
+            <div class="review-export-actions">
+              <span id="reviewDraftCount">0 条</span>
+              <button id="exportReviewDecisions" type="button">导出 JSON</button>
+              <button id="clearReviewDecisions" type="button">清空本轮</button>
+            </div>
+          </div>
+          <div class="review-focus-list" id="reviewFocusList"></div>
+          <pre class="review-draft" id="reviewDraft">尚未标记候选。</pre>
           <div class="card-grid compact-grid" id="newGrid"></div>
         </section>
 

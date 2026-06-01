@@ -852,6 +852,67 @@ h3 {
   color: var(--text);
 }
 
+.decision-tag {
+  background: rgba(246, 211, 107, 0.18);
+  border-color: rgba(246, 211, 107, 0.44);
+  color: var(--text);
+}
+
+.suggestion-line {
+  border-left: 2px solid rgba(255, 214, 74, 0.48);
+  display: grid;
+  gap: 3px;
+  padding-left: 10px;
+}
+
+.suggestion-line b {
+  color: var(--text);
+  font-size: var(--type-body-sm);
+  line-height: var(--leading-caption);
+}
+
+.suggestion-line span {
+  color: var(--muted);
+  display: block;
+  font-size: var(--type-body-sm);
+  line-height: var(--leading-caption);
+}
+
+.quick-actions,
+.drawer-actions,
+.review-export-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.quick-actions button,
+.drawer-actions button,
+.review-export-actions button {
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(255, 214, 91, 0.22);
+  border-radius: var(--radius);
+  color: var(--muted);
+  cursor: pointer;
+  font-size: var(--type-label);
+  font-weight: 760;
+  min-height: 30px;
+  padding: 0 10px;
+  transition: 150ms ease;
+}
+
+.quick-actions button:hover,
+.drawer-actions button:hover,
+.review-export-actions button:hover {
+  background: rgba(255, 214, 74, 0.12);
+  border-color: rgba(255, 214, 74, 0.48);
+  color: var(--text);
+}
+
+.drawer-actions {
+  margin-top: 14px;
+}
+
 .score-bars {
   display: grid;
   gap: 7px;
@@ -970,8 +1031,22 @@ h3 {
   border: 1px solid rgba(255, 214, 91, 0.14);
   border-radius: var(--radius);
   box-shadow: 0 12px 28px rgba(0, 0, 0, 0.18);
+  color: inherit;
   min-height: 136px;
   padding: 18px;
+  text-align: left;
+  width: 100%;
+}
+
+.review-lane-tile {
+  cursor: pointer;
+  transition: 160ms ease;
+}
+
+.review-lane-tile:hover,
+.review-lane-tile.active {
+  background: rgba(255, 214, 74, 0.11);
+  border-color: rgba(255, 214, 74, 0.42);
 }
 
 .review-tile strong {
@@ -985,6 +1060,183 @@ h3 {
   font-size: var(--type-body-sm);
   line-height: var(--leading-body);
   margin-bottom: 0;
+}
+
+.workload-strip {
+  border-bottom: 1px solid var(--line);
+  border-top: 1px solid var(--line);
+  display: grid;
+  gap: 0;
+  grid-template-columns: repeat(3, 1fr);
+  margin: 0 0 24px;
+}
+
+.workload-strip div {
+  border-right: 1px solid var(--line);
+  min-height: 104px;
+  padding: 16px 18px 16px 0;
+}
+
+.workload-strip div + div {
+  padding-left: 18px;
+}
+
+.workload-strip div:last-child {
+  border-right: 0;
+  padding-right: 0;
+}
+
+.workload-strip strong {
+  display: block;
+  font-size: 30px;
+  line-height: var(--leading-tight);
+}
+
+.workload-strip span {
+  color: var(--muted);
+  display: block;
+  font-size: var(--type-body-sm);
+  line-height: var(--leading-caption);
+}
+
+.review-snippet {
+  background: rgba(255, 255, 255, 0.045);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  color: var(--muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.55;
+  margin: 14px 0 0;
+  overflow-x: auto;
+  padding: 12px;
+  white-space: pre-wrap;
+}
+
+.review-export {
+  align-items: start;
+  border-bottom: 1px solid var(--line);
+  display: grid;
+  gap: 18px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  margin: 0 0 12px;
+  padding: 0 0 18px;
+}
+
+.review-export h3 {
+  font-size: var(--type-h3);
+}
+
+.review-export p {
+  color: var(--muted);
+  font-size: var(--type-body-sm);
+  line-height: var(--leading-body);
+  margin: 6px 0 0;
+}
+
+.review-export-actions {
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.review-export-actions span {
+  color: var(--muted);
+  font-size: var(--type-body-sm);
+  font-weight: 720;
+  margin-right: 6px;
+}
+
+.review-draft {
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  color: var(--muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.55;
+  margin: 0 0 24px;
+  max-height: 280px;
+  overflow: auto;
+  padding: 14px;
+  white-space: pre-wrap;
+}
+
+.review-focus-list {
+  display: grid;
+  gap: 10px;
+  margin: 0 0 12px;
+}
+
+.review-empty,
+.review-focus-head,
+.review-focus-item {
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.review-empty {
+  display: grid;
+  gap: 4px;
+  padding: 14px;
+}
+
+.review-empty strong {
+  font-size: 28px;
+  line-height: var(--leading-tight);
+}
+
+.review-empty span,
+.review-focus-head span,
+.review-focus-item p,
+.review-focus-item span {
+  color: var(--muted);
+  font-size: var(--type-body-sm);
+  line-height: var(--leading-body);
+}
+
+.review-focus-head {
+  align-items: start;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+  padding: 14px;
+}
+
+.review-focus-head h3 {
+  font-size: var(--type-h3);
+}
+
+.review-focus-item {
+  align-items: start;
+  display: grid;
+  gap: 16px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  padding: 14px;
+}
+
+.review-focus-item strong {
+  display: block;
+  font-size: var(--type-body);
+  line-height: var(--leading-heading);
+}
+
+.review-focus-item p {
+  margin: 5px 0;
+}
+
+.review-focus-item span {
+  display: block;
+}
+
+.review-focus-item a {
+  border: 1px solid rgba(255, 214, 91, 0.28);
+  border-radius: var(--radius);
+  color: var(--cyan);
+  font-size: var(--type-label);
+  font-weight: 760;
+  padding: 6px 10px;
+  text-decoration: none;
 }
 
 .drawer {
@@ -1144,9 +1396,18 @@ h3 {
 
   .topbar,
   .section-intro,
-  .panel-head {
+  .panel-head,
+  .review-export {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .review-export {
+    grid-template-columns: 1fr;
+  }
+
+  .review-export-actions {
+    justify-content: flex-start;
   }
 
   .search-wrap {
@@ -1157,8 +1418,20 @@ h3 {
   .spotlight-grid,
   .compact-grid,
   .review-matrix,
+  .workload-strip,
   .pipeline-steps {
     grid-template-columns: 1fr;
+  }
+
+  .workload-strip div,
+  .workload-strip div + div {
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+    padding-left: 0;
+  }
+
+  .workload-strip div:last-child {
+    border-bottom: 0;
   }
 
   .pipeline-step {
@@ -1184,4 +1457,3 @@ h3 {
     height: 18px !important;
   }
 }
-
