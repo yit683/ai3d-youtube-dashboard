@@ -1,0 +1,28 @@
+{
+  "cadence": "weekly",
+  "lookbackDays": 7,
+  "maxQueriesPerRun": 8,
+  "maxResultsPerQuery": 8,
+  "maxChannelResults": 6,
+  "searchQueries": [
+    "AI 3D generator",
+    "text to 3D AI",
+    "image to 3D AI",
+    "Meshy AI 3D",
+    "Tripo AI 3D",
+    "Hunyuan 3D",
+    "Rodin AI 3D",
+    "AI 3D workflow",
+    "AI 3D game asset",
+    "AI 3D Blender workflow",
+    "AI 3D printing workflow",
+    "3D AI model generator review",
+    "Meshy vs Tripo",
+    "AI 3D comparison"
+  ],
+  "channelIds": [
+    "UCgJ7F0EnAcVkN4qZD8fP_JA",
+    "UCRW08KcTVjXEmBzBsVl7XjA",
+    "UCRGb8yCnI5-upL3hT4oiOZw"
+  ]
+}
