@@ -48,6 +48,22 @@ const shortDate = (value) => {
   return date.toISOString().slice(0, 10);
 };
 
+const dateTimeLabel = (value) => {
+  if (!value) return "-";
+  if (/^\d{4}-\d{2}-\d{2}$/.test(String(value))) return `${value}（未记录时分）`;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return new Intl.DateTimeFormat("zh-CN", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZone: "Asia/Shanghai",
+  }).format(date);
+};
+
 const percent = (part, total) => `${Math.round((part / Math.max(total, 1)) * 100)}%`;
 
 const normalized = (text) => String(text || "").toLowerCase();
@@ -97,9 +113,30 @@ function bindChrome() {
 }
 
 function renderAll() {
+  renderRunMetadata();
   renderOverview();
   renderFilters();
   renderView();
+}
+
+function renderRunMetadata() {
+  const metrics = state.data.metrics || {};
+  const automation = state.automation || {};
+  const total = Number(metrics.total_scored_videos || state.data.videos?.length || 0);
+  const scoreRunAt = metrics.last_score_run_at || metrics.v1_3_scored_date || state.data.generatedAt;
+  const dataGeneratedAt = state.data.generatedAt || metrics.last_auto_update;
+  const autoRunAt = metrics.last_auto_update || automation.lastAutomationRunAt;
+  $("#datasetMeta").textContent = `${fmt(total)} videos · scoring standard v1.3`;
+  $("#runMeta").innerHTML = [
+    ["最近跑分", dateTimeLabel(scoreRunAt)],
+    ["数据生成", dateTimeLabel(dataGeneratedAt)],
+    ["自动更新", dateTimeLabel(autoRunAt)],
+  ].map(([label, value]) => `
+    <span>
+      <b>${label}</b>
+      ${escapeHtml(value)}
+    </span>
+  `).join("");
 }
 
 function renderView() {
@@ -219,6 +256,9 @@ function renderOverviewSearch() {
 
 function renderPipelineBoard() {
   const automation = state.automation;
+  const metrics = state.data.metrics || {};
+  const lastScoreRun = metrics.last_score_run_at || metrics.v1_3_scored_date || state.data.generatedAt;
+  const lastAutoRun = metrics.last_auto_update || automation.lastAutomationRunAt;
   $("#pipelineMode").textContent = automation.statusLabel || automation.mode || "Static";
   $("#pipelineBoard").innerHTML = `
     <div class="pipeline-summary">
@@ -227,8 +267,16 @@ function renderPipelineBoard() {
         <strong>${escapeHtml(automation.sourceWorkbook || "dashboard-data.js")}</strong>
       </div>
       <div>
-        <span>最近源数据更新</span>
-        <strong>${escapeHtml(automation.lastSourceUpdate || "-")}</strong>
+        <span>最近跑分时间</span>
+        <strong>${escapeHtml(dateTimeLabel(lastScoreRun))}</strong>
+      </div>
+      <div>
+        <span>最近自动更新</span>
+        <strong>${escapeHtml(dateTimeLabel(lastAutoRun))}</strong>
+      </div>
+      <div>
+        <span>源数据更新</span>
+        <strong>${escapeHtml(dateTimeLabel(automation.lastSourceUpdate))}</strong>
       </div>
       <div>
         <span>后续更新频率</span>
@@ -686,6 +734,7 @@ function defaultAutomationConfig() {
     statusLabel: "本地静态数据",
     sourceWorkbook: "dashboard-data.js",
     lastSourceUpdate: "-",
+    lastAutomationRunAt: "",
     plannedCadence: "待配置",
     futureIntegrations: ["YouTube Data API", "评分脚本", "人工复核", "飞书同步"],
     pipelineSteps: [
@@ -709,7 +758,7 @@ function initSignalCanvas() {
     height = canvas.height = window.innerHeight * window.devicePixelRatio;
     canvas.style.width = `${window.innerWidth}px`;
     canvas.style.height = `${window.innerHeight}px`;
-    const count = Math.min(80, Math.floor(window.innerWidth / 18));
+    const count = Math.min(34, Math.floor(window.innerWidth / 42));
     points = Array.from({ length: count }, (_, index) => ({
       x: Math.random() * width,
       y: Math.random() * height,
@@ -733,9 +782,9 @@ function initSignalCanvas() {
         const dx = point.x - other.x;
         const dy = point.y - other.y;
         const distance = Math.sqrt(dx * dx + dy * dy);
-        const limit = 170 * window.devicePixelRatio;
+        const limit = 130 * window.devicePixelRatio;
         if (distance < limit) {
-          const alpha = (1 - distance / limit) * 0.16;
+          const alpha = (1 - distance / limit) * 0.06;
           ctx.strokeStyle = `rgba(255, 214, 74, ${alpha})`;
           ctx.beginPath();
           ctx.moveTo(point.x, point.y);
@@ -745,7 +794,7 @@ function initSignalCanvas() {
       }
 
       const pulse = 1.5 + Math.sin(time / 700 + point.phase) * 0.9;
-      ctx.fillStyle = "rgba(255, 184, 0, 0.32)";
+      ctx.fillStyle = "rgba(255, 184, 0, 0.16)";
       ctx.beginPath();
       ctx.arc(point.x, point.y, pulse * window.devicePixelRatio, 0, Math.PI * 2);
       ctx.fill();
@@ -761,3 +810,4 @@ function initSignalCanvas() {
 init().catch((error) => {
   document.body.innerHTML = `<pre style="padding:24px;color:white">${error.stack || error}</pre>`;
 });
+
