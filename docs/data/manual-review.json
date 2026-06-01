@@ -1,0 +1,18 @@
+{
+  "_comment": "Manual review records are keyed by YouTube video_id. Automation reads this file and preserves these fields when rebuilding dashboard-data.js.",
+  "_schema": {
+    "manualStatus": "unreviewed | approved | rejected | needs_review",
+    "tierOverride": "S | A | B | C | Archive, optional",
+    "priorityOverride": "High | Medium | Low, optional",
+    "roleOverride": "Current Intelligence | Competitor Reference | Workflow Case | Evergreen Knowledge | Long-tail Archive, optional",
+    "reviewer": "name or initials",
+    "reviewedAt": "YYYY-MM-DD",
+    "note": "short review note"
+  },
+  "lkZ69q6ILEU": {
+    "manualStatus": "approved",
+    "reviewer": "",
+    "reviewedAt": "",
+    "note": "S 级样本已人工走查通过"
+  }
+}
