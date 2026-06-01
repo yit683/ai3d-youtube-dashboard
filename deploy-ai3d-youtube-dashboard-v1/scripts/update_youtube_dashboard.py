@@ -279,6 +279,7 @@ def apply_manual_review(video: dict, manual: dict) -> None:
 
 
 def rebuild_summaries(data: dict) -> None:
+    now = dt.datetime.now(dt.timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
     videos = data["videos"]
     metrics = data.setdefault("metrics", {})
     metrics["total_scored_videos"] = len(videos)
@@ -290,7 +291,8 @@ def rebuild_summaries(data: dict) -> None:
     scores = [float(v.get("score") or 0) for v in videos]
     metrics["average_score"] = round(sum(scores) / max(len(scores), 1), 2)
     metrics["max_score"] = max(scores) if scores else 0
-    metrics["last_auto_update"] = dt.datetime.now(dt.timezone.utc).isoformat()
+    metrics["last_score_run_at"] = now
+    metrics["last_auto_update"] = now
 
     def counts(field: str) -> list[dict]:
         result: dict[str, int] = {}
@@ -328,8 +330,14 @@ def rebuild_summaries(data: dict) -> None:
 
 def update_automation_config() -> None:
     text = AUTOMATION_CONFIG.read_text(encoding="utf-8")
-    today = dt.datetime.now(dt.timezone.utc).date().isoformat()
+    now = dt.datetime.now(dt.timezone.utc).replace(microsecond=0)
+    today = now.date().isoformat()
+    timestamp = now.isoformat().replace("+00:00", "Z")
     text = re.sub(r'lastSourceUpdate: "[^"]+"', f'lastSourceUpdate: "{today}"', text)
+    if re.search(r'lastAutomationRunAt: "[^"]*"', text):
+        text = re.sub(r'lastAutomationRunAt: "[^"]*"', f'lastAutomationRunAt: "{timestamp}"', text)
+    else:
+        text = re.sub(r'(lastSourceUpdate: "[^"]+",)', f'\\1\\n  lastAutomationRunAt: "{timestamp}",', text)
     text = re.sub(r'plannedCadence: "[^"]+"', 'plannedCadence: "GitHub Actions 每周自动更新"', text)
     text = re.sub(r'statusLabel: "[^"]+"', 'statusLabel: "GitHub 自动更新"', text)
     AUTOMATION_CONFIG.write_text(text, encoding="utf-8")
@@ -366,7 +374,7 @@ def main() -> int:
         apply_manual_review(video, manual)
 
     rebuild_summaries(data)
-    data["generatedAt"] = dt.datetime.now(dt.timezone.utc).date().isoformat()
+    data["generatedAt"] = dt.datetime.now(dt.timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
     print(f"Discovered {len(discovered_ids)} ids; added {new_count} new videos; total {len(data['videos'])}.")
     if not args.dry_run:
