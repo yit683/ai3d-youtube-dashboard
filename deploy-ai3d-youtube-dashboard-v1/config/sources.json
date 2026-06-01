@@ -1,9 +1,9 @@
 {
   "cadence": "weekly",
-  "lookbackDays": 14,
-  "maxQueriesPerRun": 30,
-  "maxResultsPerQuery": 15,
-  "maxChannelResults": 15,
+  "lookbackDays": 7,
+  "maxQueriesPerRun": 8,
+  "maxResultsPerQuery": 8,
+  "maxChannelResults": 6,
   "searchQueries": [
     "AI 3D generator",
     "text to 3D AI",
