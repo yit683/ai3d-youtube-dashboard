@@ -810,3 +810,4 @@ function initSignalCanvas() {
 init().catch((error) => {
   document.body.innerHTML = `<pre style="padding:24px;color:white">${error.stack || error}</pre>`;
 });
+
