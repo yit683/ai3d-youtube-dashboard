@@ -17,6 +17,8 @@ import json
 import os
 import re
 import sys
+import time
+import urllib.error
 import urllib.parse
 import urllib.request
 from pathlib import Path
@@ -28,6 +30,10 @@ MANUAL_REVIEW = ROOT / "data" / "manual-review.json"
 SOURCES = ROOT / "config" / "sources.json"
 AUTOMATION_CONFIG = ROOT / "data" / "automation-config.js"
 YOUTUBE_API = "https://www.googleapis.com/youtube/v3"
+
+
+class YouTubeRateLimitError(RuntimeError):
+    pass
 
 
 def parse_args() -> argparse.Namespace:
@@ -65,8 +71,24 @@ def youtube_get(endpoint: str, params: dict, api_key: str) -> dict:
     query = dict(params)
     query["key"] = api_key
     url = f"{YOUTUBE_API}/{endpoint}?{urllib.parse.urlencode(query)}"
-    with urllib.request.urlopen(url, timeout=30) as response:
-        return json.loads(response.read().decode("utf-8"))
+    for attempt in range(3):
+        try:
+            with urllib.request.urlopen(url, timeout=30) as response:
+                return json.loads(response.read().decode("utf-8"))
+        except urllib.error.HTTPError as error:
+            body = error.read().decode("utf-8", errors="replace")
+            if error.code == 429:
+                if attempt < 2:
+                    wait_seconds = 20 * (attempt + 1)
+                    print(f"YouTube API returned 429. Waiting {wait_seconds}s before retry {attempt + 2}/3.", file=sys.stderr)
+                    time.sleep(wait_seconds)
+                    continue
+                raise YouTubeRateLimitError(
+                    "YouTube API returned HTTP 429 Too Many Requests. "
+                    "The run was stopped before writing partial data. "
+                    f"Response: {body[:500]}"
+                ) from error
+            raise
 
 
 def iso_after(days: int) -> str:
@@ -94,6 +116,7 @@ def search_video_ids(api_key: str, sources: dict, lookback_days: int) -> list[st
             api_key,
         )
         ids.extend(item["id"]["videoId"] for item in payload.get("items", []) if item.get("id", {}).get("videoId"))
+        time.sleep(1.2)
 
     channel_max = min(int(sources.get("maxChannelResults", 15)), 50)
     for channel_id in sources.get("channelIds", []):
@@ -110,6 +133,7 @@ def search_video_ids(api_key: str, sources: dict, lookback_days: int) -> list[st
             api_key,
         )
         ids.extend(item["id"]["videoId"] for item in payload.get("items", []) if item.get("id", {}).get("videoId"))
+        time.sleep(1.2)
 
     return sorted(set(ids))
 
@@ -128,6 +152,7 @@ def fetch_video_details(api_key: str, video_ids: list[str]) -> list[dict]:
             api_key,
         )
         results.extend(payload.get("items", []))
+        time.sleep(1.2)
     return results
 
 
@@ -355,8 +380,13 @@ def main() -> int:
     sources = load_json(SOURCES)
     lookback_days = args.lookback_days or int(sources.get("lookbackDays", 14))
 
-    discovered_ids = search_video_ids(api_key, sources, lookback_days)
-    details = fetch_video_details(api_key, discovered_ids)
+    try:
+        discovered_ids = search_video_ids(api_key, sources, lookback_days)
+        details = fetch_video_details(api_key, discovered_ids)
+    except YouTubeRateLimitError as error:
+        print(str(error), file=sys.stderr)
+        print("No dashboard files were changed. Try again later or reduce maxQueriesPerRun in config/sources.json.", file=sys.stderr)
+        return 0
     existing_by_id = {video["id"]: video for video in data["videos"]}
     new_count = 0
 
