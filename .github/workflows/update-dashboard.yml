@@ -6,8 +6,9 @@ on:
       lookback_days:
         description: "How many days of recent YouTube videos to scan"
         required: false
-        default: "14"
+        default: "7"
   schedule:
+    # Monday 10:15 Asia/Shanghai = Monday 02:15 UTC
     - cron: "15 2 * * 1"
 
 permissions:
@@ -17,10 +18,6 @@ jobs:
   update-dashboard:
     runs-on: ubuntu-latest
     timeout-minutes: 20
-
-    defaults:
-      run:
-        working-directory: deploy-ai3d-youtube-dashboard-v1
 
     steps:
       - name: Check out repository
@@ -34,9 +31,18 @@ jobs:
       - name: Update dashboard data
         env:
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+        working-directory: deploy-ai3d-youtube-dashboard-v1
         run: |
-          LOOKBACK_DAYS="${{ github.event.inputs.lookback_days || '14' }}"
+          LOOKBACK_DAYS="${{ github.event.inputs.lookback_days || '7' }}"
           python scripts/update_youtube_dashboard.py --lookback-days "$LOOKBACK_DAYS"
+
+      - name: Sync GitHub Pages files
+        run: |
+          mkdir -p docs
+          rsync -a --delete \
+            --exclude ".github" \
+            --exclude "__pycache__" \
+            deploy-ai3d-youtube-dashboard-v1/ docs/
 
       - name: Commit updated data
         run: |
@@ -46,6 +52,9 @@ jobs:
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/dashboard-data.js data/automation-config.js data/manual-review.json
+          git add deploy-ai3d-youtube-dashboard-v1/data/dashboard-data.js \
+                  deploy-ai3d-youtube-dashboard-v1/data/automation-config.js \
+                  deploy-ai3d-youtube-dashboard-v1/data/manual-review.json \
+                  docs/
           git commit -m "Update YouTube dashboard data"
           git push
