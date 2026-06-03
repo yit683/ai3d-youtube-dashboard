@@ -27,6 +27,7 @@
           <button class="nav-item" data-view="current">近期优先资源</button>
           <button class="nav-item" data-view="map">主题分类</button>
           <button class="nav-item" data-view="review">复核队列</button>
+          <button class="nav-item" data-view="faq">FAQ</button>
         </nav>
 
         <div class="signal-panel">
@@ -196,6 +197,96 @@
           </div>
           <div class="review-matrix" id="reviewMatrix"></div>
           <div class="card-grid compact-grid" id="reviewGrid"></div>
+        </section>
+
+        <section class="view" id="faq">
+          <div class="section-intro">
+            <div>
+              <p class="eyebrow">Product FAQ</p>
+              <h3>常见问题</h3>
+            </div>
+            <span class="chip">AI 3D YouTube 资源库</span>
+          </div>
+
+          <div class="faq-hero">
+            <div>
+              <p class="eyebrow">What this product does</p>
+              <h3>一个持续更新的 AI 3D 视频情报库</h3>
+              <p>它把 YouTube 上和 AI 3D 相关的公开内容整理成可检索、可筛选、可复核的资源库，用于追踪竞品动态、工作流案例、评测内容和市场信号。</p>
+            </div>
+            <div class="faq-status">
+              <span>自动更新</span>
+              <span>机器预筛</span>
+              <span>人工审核草稿</span>
+              <span>GitHub Pages 发布</span>
+            </div>
+          </div>
+
+          <div class="faq-layout">
+            <article class="faq-group">
+              <p class="eyebrow">基础说明</p>
+              <details open>
+                <summary>这个资源库是做什么的？</summary>
+                <p>这是一个面向 AI 3D 领域的 YouTube 资源库，用于持续追踪竞品动态、工作流案例、评测内容、教程资源和市场信号。它不是普通视频收藏夹，而是把视频按相关性、战略价值、主题类别和审核状态进行整理。</p>
+              </details>
+              <details>
+                <summary>资源从哪里来？</summary>
+                <p>当前主要来源是 YouTube Data API。系统会根据预设关键词、频道和主题方向抓取公开视频。后续可以扩展到固定频道追踪、竞品官方渠道、手动指定链接和其他公开来源。</p>
+              </details>
+              <details>
+                <summary>这个网站是否公开？</summary>
+                <p>当前网站通过 GitHub Pages 公开访问。资源来自公开互联网内容，不包含私密视频或内部机密数据。</p>
+              </details>
+            </article>
+
+            <article class="faq-group">
+              <p class="eyebrow">数据与评分</p>
+              <details open>
+                <summary>资源会自动更新吗？</summary>
+                <p>会。当前通过 GitHub Actions 定期运行更新流程，抓取最近一段时间的新视频，补充 metadata、评分和候选状态。数据更新后，GitHub Pages 会自动发布到线上页面。</p>
+              </details>
+              <details>
+                <summary>评分是怎么来的？</summary>
+                <p>每条视频会根据内容相关性、战略价值、市场信号等维度进行自动评分，并初步划分为 S / A / B / C / Archive 等层级。评分用于排序和预筛，不代表最终人工判断。</p>
+              </details>
+              <details>
+                <summary>S 级样本是什么意思？</summary>
+                <p>S 级样本是当前资源库中最值得重点关注的高价值视频，通常具备较强的 AI 3D 相关性、产品或竞品参考价值，或者明确的工作流启发。</p>
+              </details>
+            </article>
+
+            <article class="faq-group">
+              <p class="eyebrow">新增候选与人工审核</p>
+              <details open>
+                <summary>新增候选是什么？</summary>
+                <p>新增候选是自动更新中新发现的视频。系统会先把它们分为“优先确认”“待判断”“低优先观察”“建议归档”等队列，减少人工从零筛选的成本。</p>
+              </details>
+              <details>
+                <summary>每条新增视频都需要人工复核吗？</summary>
+                <p>不需要。人工主要关注“优先确认”和“待判断”两类。低优先观察和建议归档通常可以暂时跳过，只在抽查或专题扩库时再看。</p>
+              </details>
+              <details>
+                <summary>“收录 / 归档 / 待复核”按钮会直接写回数据库吗？</summary>
+                <p>当前不会直接写回 GitHub。按钮会先在浏览器本地生成一份人工审核草稿，你可以导出 JSON，再通过回写流程合并到 manual-review.json。这是为了避免在静态网页中暴露写入权限。</p>
+              </details>
+            </article>
+
+            <article class="faq-group">
+              <p class="eyebrow">运营与后续扩展</p>
+              <details open>
+                <summary>为什么不直接在网页里保存审核结果？</summary>
+                <p>当前网站部署在 GitHub Pages，是静态网页。静态网页不能安全地直接修改 GitHub 仓库。如果要实现一键保存，需要额外接入安全后端，例如 GitHub App、Cloudflare Worker 或飞书多维表格 API。</p>
+              </details>
+              <details>
+                <summary>数据会不会丢失或倒退？</summary>
+                <p>正常自动更新不会主动删除历史资源。后续会加入防倒退保护：如果新一次更新后的总资源数低于上一版，系统将不提交结果，避免误上传或数据覆盖导致资源库回退。</p>
+              </details>
+              <details>
+                <summary>之后会接飞书多维表格吗？</summary>
+                <p>可以。飞书适合作为人工审核、多人协作和状态管理后台。推荐流程是：网页用于浏览和筛选，飞书用于审核回写、备注和多人协作，GitHub Pages 用于对外展示。</p>
+              </details>
+            </article>
+          </div>
         </section>
       </main>
     </div>
