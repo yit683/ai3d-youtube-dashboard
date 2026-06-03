@@ -1239,6 +1239,91 @@ h3 {
   text-decoration: none;
 }
 
+.faq-hero {
+  align-items: start;
+  border-bottom: 1px solid var(--line);
+  border-top: 1px solid var(--line);
+  display: grid;
+  gap: 28px;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 360px);
+  margin-bottom: 30px;
+  padding: 22px 0;
+}
+
+.faq-hero h3 {
+  font-size: 28px;
+  margin-bottom: 10px;
+}
+
+.faq-hero p {
+  color: var(--muted);
+  font-size: var(--type-body);
+  line-height: var(--leading-body);
+  margin-bottom: 0;
+  max-width: 760px;
+}
+
+.faq-status {
+  display: grid;
+  gap: 9px;
+}
+
+.faq-status span {
+  border-bottom: 1px solid var(--line);
+  color: var(--text);
+  font-size: var(--type-body-sm);
+  font-weight: 720;
+  padding: 9px 0;
+}
+
+.faq-layout {
+  display: grid;
+  gap: 30px 42px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.faq-group {
+  border-top: 1px solid var(--line);
+  padding-top: 16px;
+}
+
+.faq-group details {
+  border-bottom: 1px solid var(--line);
+  padding: 13px 0;
+}
+
+.faq-group summary {
+  color: var(--text);
+  cursor: pointer;
+  font-size: var(--type-body);
+  font-weight: 760;
+  line-height: var(--leading-heading);
+  list-style: none;
+}
+
+.faq-group summary::-webkit-details-marker {
+  display: none;
+}
+
+.faq-group summary::after {
+  color: var(--cyan);
+  content: "+";
+  float: right;
+  font-weight: 760;
+  margin-left: 16px;
+}
+
+.faq-group details[open] summary::after {
+  content: "-";
+}
+
+.faq-group details p {
+  color: var(--muted);
+  font-size: var(--type-body-sm);
+  line-height: var(--leading-body);
+  margin: 10px 0 0;
+}
+
 .drawer {
   background: rgba(8, 15, 17, 0.94);
   border-left: 1px solid var(--line-strong);
@@ -1342,7 +1427,9 @@ h3 {
 @media (max-width: 1420px) {
   .dashboard-grid,
   .radar-layout,
-  .map-layout {
+  .map-layout,
+  .faq-layout,
+  .faq-hero {
     grid-template-columns: 1fr;
   }
 }
@@ -1358,7 +1445,7 @@ h3 {
   }
 
   .nav {
-    grid-template-columns: repeat(5, minmax(120px, 1fr));
+    grid-template-columns: repeat(7, minmax(120px, 1fr));
     overflow-x: auto;
   }
 
