@@ -1,8 +1,8 @@
 window.DASHBOARD_AUTOMATION = {
   mode: "static_mvp",
   statusLabel: "GitHub 自动更新",
-  lastSourceUpdate: "2026-08-24",
-  lastAutomationRunAt: "2026-08-24T03:14:48Z",
+  lastSourceUpdate: "2026-08-31",
+  lastAutomationRunAt: "2026-08-31T08:36:48Z",
   plannedCadence: "GitHub Actions 每周自动更新",
   owner: "Strategy / Research",
   dataContractVersion: "dashboard-data.v1",
